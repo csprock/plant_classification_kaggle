@@ -43,9 +43,22 @@ for c in os.listdir('./train'):
         img_main = load_and_resize_image('./train/' + c + '/' + f_name, (d, d))
         
         if augment == True:
-            img_aug = ImageOps.mirror(img_main).rotate(random.choice([90, -90, 180, 0]))
-            img_aug = np.asarray(img_aug, dtype = 'float32') / 255
-            ims.append(img_aug)
+            
+            # image rotation
+            img_aug_1 = img_main.rotate(random.choice([90,-90,180]))
+            img_aug_1 = np.asarray(img_aug_1, dtype = 'float32') / 255
+            ims.append(img_aug_1)
+            
+            # mirror image rotation
+            img_aug_2 = ImageOps.mirror(img_main).rotate(random.choice([90, -90, 180]))
+            img_aug_2 = np.asarray(img_aug_2, dtype = 'float32') / 255
+            ims.append(img_aug_2)
+            
+            # mirror image
+            img_aug_3 = ImageOps.mirror(img_main)
+            img_aug_3 = np.asarray(img_aug_3, dtype = 'float32') / 255
+            ims.append(img_aug_3)
+            
             
         img_main = np.asarray(img_main, dtype = 'float32') / 255
         ims.append(img_main)
@@ -54,7 +67,7 @@ for c in os.listdir('./train'):
     X_temp = np.stack(ims, axis = 0)
     
     if augment == True:
-        Y_temp = (2*n_obs)*[c]
+        Y_temp = (4*n_obs)*[c]
     else:
         Y_temp = n_obs*[c]
     
