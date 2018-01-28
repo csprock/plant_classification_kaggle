@@ -4,10 +4,7 @@ from keras.layers import Input, Add, Dense, Activation, ZeroPadding2D, BatchNorm
 from keras.models import Model
 #from keras.utils import layer_utils
 from keras import optimizers
-from keras.utils import to_categorical
-from keras.preprocessing.image import ImageDataGenerator
 #import keras.backend as K
-from keras.utils import plot_model
 import keras
 
 
@@ -20,23 +17,51 @@ def output_dims(n,f,s = 1,p = 0, same = False):
     return {'d':np.floor((n + 2*p - f)/s + 1), 'padding':p}
 
 
+def customNet(input_shape):
+    
+    X_input = Input(input_shape)
+    
+    X = Conv2D(16, (5,5), strides = (2,2), padding = 'valid', activation = 'relu')(X_input)
+    X = MaxPooling2D((2,2), strides = (2,2))(X)
+    
+    X = Conv2D(32, (3,3), strides = (1,1), padding = 'valid', activation = 'relu')(X)
+    X = MaxPooling2D((2,2), strides = (2,2))(X)
+    
+    X = Conv2D(64, (3,3), strides = (1,1), padding = 'valid', activation = 'relu')(X)
+    X = Conv2D(64, (3,3), strides = (1,1), padding = 'valid', activation = 'relu')(X)    
+
+    
+    X = GlobalMaxPooling2D()(X)
+    
+    #X = Flatten()(X)
+    X = Dense(256, activation='relu')(X)
+    X = Dropout(0.5)(X)
+    X = Dense(12, activation = 'softmax', name = 'fc')(X)
+    
+    the_model = Model(inputs = X_input, outputs = X, name = 'layer_11_model')
+    return the_model
 
 
-d = 224
-model = layer_11((d,d,3))
+
+model = customNet((d,d,3))
 model.summary()
 
-train_datagen = ImageDataGenerator()
 
-adam = optimizers.SGD(lr = 1e-4, momentum = 0.5)
-model.compile(optimizer = adam, loss='categorical_crossentropy', metrics=['accuracy'])
+opti = optimizers.Adam(lr = 1e-4)
+model.compile(optimizer = opti, loss='categorical_crossentropy', metrics=['accuracy'])
 
-early_stopping = keras.callbacks.EarlyStopping(monitor = 'val_acc', min_delta = 0.01, patience = 12)
+early_stopping = keras.callbacks.EarlyStopping(monitor = 'val_acc', min_delta = 0.01, patience = 8)
 
 batch_size = 32
 epoch_steps = np.floor(X_train.shape[0] / 32)
 
-model.fit_generator(train_datagen.flow(X_train, Y_train, batch_size = batch_size), steps_per_epoch = epoch_steps, epochs = 250, validation_data = (X_valid, Y_valid), callbacks = [early_stopping])
+
+model.fit_generator(train_gen.flow(X_train,Y_train, batch_size = batch_size), 
+                    steps_per_epoch = epoch_steps, 
+                    epochs = 250, 
+                    validation_data = val_gen.flow(X_valid, Y_valid, batch_size = batch_size), 
+                    validation_steps = X_valid.shape[0] // batch_size,
+                    callbacks = [early_stopping])
 
 
 model.save('C:/Users/csprock/Documents/Projects/Kaggle/Plant_Classification/model1.h5')

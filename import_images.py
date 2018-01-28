@@ -1,14 +1,11 @@
 import os
-from PIL import Image, ImageOps
+from PIL import Image
 import numpy as np
-#import matplotlib.pyplot as plt
-#import pandas as pd
-from sklearn.model_selection import StratifiedShuffleSplit
-from keras.utils import np_utils
+from keras.preprocessing.image import ImageDataGenerator
+from keras.utils import to_categorical
 from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import StratifiedShuffleSplit
 import random
-
-
 
 def load_and_resize_image(filename, dims = None, rotate = None):
     img = Image.open(filename)
@@ -21,55 +18,33 @@ def load_and_resize_image(filename, dims = None, rotate = None):
     return img
 
 
-########## import and augment image set ###########
+########## import images ###########
     
+seed = 123
+random.seed(seed)
 
-random.seed(123)
-
-d = 64
+d = 128
 X = np.empty(shape = (0, d,d, 3))
 Y = []
-augment = True
 
-for c in os.listdir('./train'):
+classes = os.listdir('./train')
+classes.sort()
+
+for c in classes:
     
     # get list of file names and number of observations in class c
     file_names = os.listdir('./train/' + c)
     n_obs = len(file_names)
     
-    
     ims = []
     for f_name in file_names:
         img_main = load_and_resize_image('./train/' + c + '/' + f_name, (d, d))
-        
-        if augment == True:
-            
-            # image rotation
-            img_aug_1 = img_main.rotate(random.choice([90,-90,180]))
-            img_aug_1 = np.asarray(img_aug_1, dtype = 'float32') / 255
-            ims.append(img_aug_1)
-            
-            # mirror image rotation
-            img_aug_2 = ImageOps.mirror(img_main).rotate(random.choice([90, -90, 180]))
-            img_aug_2 = np.asarray(img_aug_2, dtype = 'float32') / 255
-            ims.append(img_aug_2)
-            
-            # mirror image
-            img_aug_3 = ImageOps.mirror(img_main)
-            img_aug_3 = np.asarray(img_aug_3, dtype = 'float32') / 255
-            ims.append(img_aug_3)
-            
-            
-        img_main = np.asarray(img_main, dtype = 'float32') / 255
+        img_main = np.asarray(img_main, dtype = 'float32')
         ims.append(img_main)
             
 
     X_temp = np.stack(ims, axis = 0)
-    
-    if augment == True:
-        Y_temp = (4*n_obs)*[c]
-    else:
-        Y_temp = n_obs*[c]
+    Y_temp = n_obs*[c]
     
     X = np.concatenate([X, X_temp])
     Y.extend(Y_temp)
@@ -80,9 +55,11 @@ for c in os.listdir('./train'):
 encoder = LabelEncoder()
 encoder.fit(Y)
 encoded_Y = encoder.transform(Y)
-Yd = np_utils.to_categorical(encoded_Y)
+Yd = to_categorical(encoded_Y)
 
-sss = StratifiedShuffleSplit(n_splits = 2, train_size = 0.97, test_size = 0.03, random_state = 123)
+p = 0.05  # set % of data for validation set
+
+sss = StratifiedShuffleSplit(n_splits = 2, train_size = 1-p, test_size = p, random_state = seed)
 
 for train_index, test_index in sss.split(X,Yd):
     X_train, X_valid = X[train_index,:,:,:], X[test_index,:,:,:]
@@ -98,11 +75,13 @@ test_set_names = os.listdir('./test/')
 X_test = []
 for n in test_set_names:
     temp = load_and_resize_image('./test/' + n, (d,d))
-    temp = np.asarray(temp, dtype = 'float32') / 255
+    temp = np.asarray(temp, dtype = 'float32')
     X_test.append(temp)
     
 X_test = np.stack(X_test, axis = 0)
 
 
-
-
+####### create image generators #######
+train_gen = ImageDataGenerator(rescale = 1/255, rotation_range = 90, horizontal_flip = True)
+val_gen = ImageDataGenerator(rescale = 1/255, rotation_range = 90, horizontal_flip = True)
+#test_gen = ImageDataGenerator(rescale = 1./255)
