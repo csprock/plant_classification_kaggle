@@ -1,4 +1,4 @@
-# import numpy as np
+import numpy as np
 #from keras import layers
 from keras.layers import Input, Add, Dense, Activation, ZeroPadding2D, BatchNormalization, Flatten, Conv2D, AveragePooling2D, MaxPooling2D, GlobalMaxPooling2D,Dropout
 from keras.models import Model
@@ -10,63 +10,38 @@ import keras
 
 
 def output_dims(n,f,s = 1,p = 0, same = False):
-    
-    if same == True:
-        p = (f - 1)/2
-    
+    if same == True: p = (f - 1)/2
     return {'d':np.floor((n + 2*p - f)/s + 1), 'padding':p}
 
 
-def customNet(input_shape):
-    
-    X_input = Input(input_shape)
-    
-    X = Conv2D(16, (5,5), strides = (2,2), padding = 'valid', activation = 'relu')(X_input)
-    X = MaxPooling2D((2,2), strides = (2,2))(X)
-    
-    X = Conv2D(32, (3,3), strides = (1,1), padding = 'valid', activation = 'relu')(X)
-    X = MaxPooling2D((2,2), strides = (2,2))(X)
-    
-    X = Conv2D(64, (3,3), strides = (1,1), padding = 'valid', activation = 'relu')(X)
-    X = Conv2D(64, (3,3), strides = (1,1), padding = 'valid', activation = 'relu')(X)    
 
-    
-    X = GlobalMaxPooling2D()(X)
-    
-    #X = Flatten()(X)
-    X = Dense(256, activation='relu')(X)
-    X = Dropout(0.5)(X)
-    X = Dense(12, activation = 'softmax', name = 'fc')(X)
-    
-    the_model = Model(inputs = X_input, outputs = X, name = 'layer_11_model')
-    return the_model
-
-
-
-model = customNet((d,d,3))
+model = Net_1((d,d,3))
 model.summary()
 
 
-opti = optimizers.Adam(lr = 1e-4)
+opti = optimizers.RMSprop(lr = 1e-3, epsilon = 1e-6)
 model.compile(optimizer = opti, loss='categorical_crossentropy', metrics=['accuracy'])
 
-early_stopping = keras.callbacks.EarlyStopping(monitor = 'val_acc', min_delta = 0.01, patience = 8)
+early_stopping = keras.callbacks.EarlyStopping(monitor = 'val_acc', min_delta = 0.005, patience = 9)
 
-batch_size = 32
-epoch_steps = np.floor(X_train.shape[0] / 32)
+batch_size = 64
+epoch_steps = np.floor(X_train.shape[0] / batch_size)
 
 
 model.fit_generator(train_gen.flow(X_train,Y_train, batch_size = batch_size), 
                     steps_per_epoch = epoch_steps, 
                     epochs = 250, 
-                    validation_data = val_gen.flow(X_valid, Y_valid, batch_size = batch_size), 
-                    validation_steps = X_valid.shape[0] // batch_size,
+                    validation_data = (X_valid, Y_valid),
                     callbacks = [early_stopping])
 
 
-model.save('C:/Users/csprock/Documents/Projects/Kaggle/Plant_Classification/model1.h5')
+model.save('C:/Users/csprock/Documents/Projects/Kaggle/Plant_Classification/Net_1_normal.h5')
 
-model = keras.models.load_model('C:/Users/csprock/Documents/Projects/Kaggle/Plant_Classification/model1.h5')
+
+
+
+
+#model = keras.models.load_model('C:/Users/csprock/Documents/Projects/Kaggle/Plant_Classification/model1.h5')
 #### validation ####
 preds = model.evaluate(X_valid, Y_valid)
 print ("Loss = " + str(preds[0]))
