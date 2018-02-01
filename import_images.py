@@ -18,27 +18,92 @@ def load_and_resize_image(filename, dims = None, rotate = None):
     return img
 
 
+def getLabels(root_dir):
+    classes = os.listdir(root_dir)
+    classes.sort()
+    labels = []
+    
+    for c in classes:
+        file_names = os.listdir(root_dir + '/' + c)
+        n = len(file_names)
+        labs = n*[c]
+        labels.extend(labs)
+       
+        
+    
+    encoder = LabelEncoder()
+    encoder.fit(labels)
+    encoded_Y = encoder.transform(labels)
+    
+    return to_categorical(encoded_Y)
+
+
+def getTrainImages(root_dir, rescale = 1, d):
+    
+    X = np.empty(shape = (0, d,d, 3))
+    classes = os.listdir(root_dir)
+    classes.sort()
+
+    for c in classes:
+        # get list of file names and number of observations in class c
+        file_names = os.listdir(root_dir + '/' + c)
+        n_obs = len(file_names)
+        
+        ims = []
+        for f_name in file_names:
+            img_main = load_and_resize_image(root_dir + '/' + c + '/' + f_name, (d, d))
+            img_main = np.asarray(img_main, dtype = 'float32') / rescale
+            ims.append(img_main)
+                
+        
+        X_temp = np.stack(ims, axis = 0)
+        X = np.concatenate([X, X_temp])
+        
+    return X
+
+
+def getTestImages(root_dir, rescale = 1):
+    
+    X = np.empty(shape = (0, d,d, 3))
+
+    # get list of file names and number of observations in class c
+    file_names = os.listdir(root_dir)
+    
+    ims = []
+    for f_name in file_names:
+        img_main = load_and_resize_image(root_dir + '/' + f_name, (d, d))
+        img_main = np.asarray(img_main, dtype = 'float32') / rescale
+        ims.append(img_main)
+            
+    X_temp = np.stack(ims, axis = 0)
+    
+    X = np.concatenate([X, X_temp])
+        
+    return X
+
+
+
 ########## import images ###########
     
 seed = 123
 random.seed(seed)
 
-d = 64
+d = 224
 X = np.empty(shape = (0, d,d, 3))
 Y = []
 
-classes = os.listdir('./train')
+classes = os.listdir('./data/train')
 classes.sort()
 
 for c in classes:
     
     # get list of file names and number of observations in class c
-    file_names = os.listdir('./train/' + c)
+    file_names = os.listdir('./data/train/' + c)
     n_obs = len(file_names)
     
     ims = []
     for f_name in file_names:
-        img_main = load_and_resize_image('./train/' + c + '/' + f_name, (d, d))
+        img_main = load_and_resize_image('./data/train/' + c + '/' + f_name, (d, d))
         img_main = np.asarray(img_main, dtype = 'float32')
         ims.append(img_main)
             
@@ -97,7 +162,7 @@ del X, X_temp, Y, Yd, Y_temp
 ####### create image generators #######
 train_gen = ImageDataGenerator(rescale = 1/255, rotation_range = 90, horizontal_flip = True)
 
-
+X_train = X_train / 255
 X_valid = X_valid / 255
 #val_gen = ImageDataGenerator(rescale = 1/255)
 

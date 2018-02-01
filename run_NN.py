@@ -1,11 +1,12 @@
 import numpy as np
-#from keras import layers
+import os
 from keras.layers import Input, Add, Dense, Activation, ZeroPadding2D, BatchNormalization, Flatten, Conv2D, AveragePooling2D, MaxPooling2D, GlobalMaxPooling2D,Dropout
 from keras.models import Model
-#from keras.utils import layer_utils
 from keras import optimizers
-#import keras.backend as K
 import keras
+from keras.preprocessing.image import ImageDataGenerator
+
+
 
 
 
@@ -15,39 +16,64 @@ def output_dims(n,f,s = 1,p = 0, same = False):
 
 
 
+
+
+d = 64
+
+# define model
 model = Net_1((d,d,3))
 model.summary()
 
-
+# compile model
 opti = optimizers.RMSprop(lr = 1e-3, epsilon = 1e-6)
 model.compile(optimizer = opti, loss='categorical_crossentropy', metrics=['accuracy'])
 
+# define training parameters
 early_stopping = keras.callbacks.EarlyStopping(monitor = 'val_acc', min_delta = 0.005, patience = 9)
 
 batch_size = 64
-epoch_steps = np.floor(X_train.shape[0] / batch_size)
+epoch_steps = np.floor( 4506 / batch_size)
+
+# image generators
+train_gen = ImageDataGenerator(rescale = 1/255, rotation_range = 90, horizontal_flip = True, vertical_flip = True)
+valid_gen = ImageDataGenerator(rescale = 1/255)
+
+train_generator = train_gen.flow_from_directory(
+        './data/train',
+        target_size = (d,d),
+        batch_size = batch_size,
+        class_mode = 'categorical')
 
 
-model.fit_generator(train_gen.flow(X_train,Y_train, batch_size = batch_size), 
+valid_gen = valid_gen.flow_from_directory(
+        './data/validation',
+        target_size = (d,d),
+        class_mode = 'categorical')
+
+
+# train model
+
+model.fit_generator(train_generator, 
                     steps_per_epoch = epoch_steps, 
                     epochs = 250, 
-                    validation_data = (X_valid, Y_valid),
-                    callbacks = [early_stopping])
-
-
-model.save('C:/Users/csprock/Documents/Projects/Kaggle/Plant_Classification/Net_1_normal.h5')
-
+                    validation_data = valid_gen,
+                    callbacks = [early_stopping],
+                    validation_steps = 244 // batch_size)
 
 
 
+# validation
+model.evaluate_generator(valid_gen, steps = 10)
 
-#model = keras.models.load_model('C:/Users/csprock/Documents/Projects/Kaggle/Plant_Classification/model1.h5')
-#### validation ####
-preds = model.evaluate(X_valid, Y_valid)
-print ("Loss = " + str(preds[0]))
-print ("Test Accuracy = " + str(preds[1]))
 
 ##### predict the test data ######
+
+# import test set
+classes = os.listdir('./data/train/')
+classes.sort()
+
+
+X_test = getTestImages('./data/test', rescale = 255)
 
 test_predictions = model.predict(X_test)
 
